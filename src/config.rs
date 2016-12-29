@@ -34,9 +34,18 @@ pub struct Repo {
 pub fn from_path<P>(path: P) -> Result<Config>
     where P: AsRef<Path>
 {
-    let file = read_file(path)?;
-    let toml = parse_toml(&file)?;
-    decode(toml)
+    let file = read_file(path.as_ref()).chain_err(|| {
+            format!("failed to read config file: {}",
+                    path.as_ref().to_string_lossy())
+        })?;
+    let toml = parse_toml(&file).chain_err(|| {
+            format!("failed to parse config file: {}",
+                    path.as_ref().to_string_lossy())
+        })?;
+    decode(toml).chain_err(|| {
+        format!("failed to decode config file: {}",
+                path.as_ref().to_string_lossy())
+    })
 }
 
 fn read_file<P>(path: P) -> Result<String>
@@ -122,7 +131,7 @@ impl Into<Repo> for RawRepo {
 pub struct TomlParserError {
     lo_pos: (usize, usize),
     hi_pos: (usize, usize),
-    cause: toml::ParserError,
+    raw: toml::ParserError,
 }
 
 impl TomlParserError {
@@ -134,7 +143,7 @@ impl TomlParserError {
         Some(TomlParserError {
             lo_pos: parser.to_linecol(e.lo),
             hi_pos: parser.to_linecol(e.hi),
-            cause: e.clone(),
+            raw: e.clone(),
         })
     }
 }
@@ -142,21 +151,20 @@ impl TomlParserError {
 impl fmt::Display for TomlParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-               "{}:{}: {}:{} {}",
+               "{}: {} (line={},column={})",
+               error::Error::description(self),
+               self.raw,
                self.lo_pos.0,
-               self.lo_pos.1,
-               self.hi_pos.0,
-               self.hi_pos.1,
-               self.cause)
+               self.lo_pos.1)
     }
 }
 
 impl error::Error for TomlParserError {
     fn description(&self) -> &str {
-        self.cause.description()
+        self.raw.description()
     }
 
     fn cause(&self) -> Option<&error::Error> {
-        Some(&self.cause)
+        self.raw.cause()
     }
 }

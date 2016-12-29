@@ -86,7 +86,7 @@ fn parse_arg() -> Arg {
     Arg { log_level: matches.occurrences_of("v") }
 }
 
-fn create_logger(log_level: u64) -> Result<Logger> {
+fn create_logger(log_level: u64) -> Logger {
     let (slog_level, stdlog_level) = match log_level {
         0 => (Level::Info, LogLevelFilter::Info),
         1 => (Level::Debug, LogLevelFilter::Debug),
@@ -99,8 +99,9 @@ fn create_logger(log_level: u64) -> Result<Logger> {
 
     let root = Logger::root(drain.fuse(), o!());
     let log = root.new(o!());
-    slog_stdlog::set_logger_level(log.clone(), stdlog_level)?;
-    Ok(log)
+    slog_stdlog::set_logger_level(log.clone(), stdlog_level).expect("failed to set logget level");
+
+    log
 }
 
 fn dump_error(log: &Logger, e: &Error) {
@@ -287,10 +288,7 @@ fn run_repo(log: &Logger,
     Ok(())
 }
 
-fn run() -> Result<()> {
-    let arg = parse_arg();
-    let log = create_logger(arg.log_level)?;
-
+fn run(log: Logger, _arg: Arg) -> Result<()> {
     info!(log, "start"; "package" => APP_NAME, "version" => APP_VERSION);
 
     let config = config::from_path("cfg.toml")?;
@@ -310,7 +308,17 @@ fn run() -> Result<()> {
 }
 
 fn main() {
-    if let Err(e) = run() {
-        println!("{}", e);
+    let arg = parse_arg();
+    let log = create_logger(arg.log_level);
+
+    if let Err(e) = run(log, arg) {
+        println!("error: {}", e);
+        for e in e.iter().skip(1) {
+            println!("caused by: {}", e);
+        }
+
+        if let Some(backtrace) = e.backtrace() {
+            println!("{:?}", backtrace);
+        }
     }
 }
