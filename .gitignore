@@ -1,6 +1,4 @@
 target
-cfg.toml
-cred
-cache
+etc
 img/*.png
 

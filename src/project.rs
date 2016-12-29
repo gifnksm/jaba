@@ -28,7 +28,7 @@ impl<'a> Project<'a> {
         let log = log.new(o!("project" => label.to_string()));
 
         let project = gitlab.gitlab().project_by_name(&repo_config.name)?;
-        let repository = open_repository(&project)?;
+        let repository = open_repository(&project, git_config)?;
 
         let mut members = gitlab.gitlab().project_members(project.id)?;
         if let NamespaceId::Group(groupid) = project.namespace.owner_id() {
@@ -156,8 +156,8 @@ impl<'repo> BranchInfo<'repo> {
     }
 }
 
-fn open_repository(project: &gitlab::Project) -> Result<Repository> {
-    let mut path = PathBuf::from("cache");
+fn open_repository(project: &gitlab::Project, git_config: &GitConfig) -> Result<Repository> {
+    let mut path = PathBuf::from(&git_config.cache_directory);
     path.push(&project.path_with_namespace);
 
     let repo = if !path.exists() {

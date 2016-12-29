@@ -4,8 +4,10 @@ use std::{error, fmt};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use toml;
+
+const DEFAULT_GIT_CACHE_DIRECTORY: &'static str = "cache";
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -23,7 +25,8 @@ pub struct Gitlab {
 
 #[derive(Debug, Clone)]
 pub struct Git {
-    pub ssh_key: String,
+    pub ssh_key: PathBuf,
+    pub cache_directory: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -34,18 +37,26 @@ pub struct Repo {
 pub fn from_path<P>(path: P) -> Result<Config>
     where P: AsRef<Path>
 {
-    let file = read_file(path.as_ref()).chain_err(|| {
+    let path = path.as_ref();
+    let file = read_file(path).chain_err(|| {
             format!("failed to read config file: {}",
-                    path.as_ref().to_string_lossy())
+                    path.to_string_lossy())
         })?;
     let toml = parse_toml(&file).chain_err(|| {
             format!("failed to parse config file: {}",
-                    path.as_ref().to_string_lossy())
+                    path.to_string_lossy())
         })?;
-    decode(toml).chain_err(|| {
-        format!("failed to decode config file: {}",
-                path.as_ref().to_string_lossy())
-    })
+    let mut config = decode(toml).chain_err(|| {
+            format!("failed to decode config file: {}",
+                    path.to_string_lossy())
+        })?;
+
+    // Converts relative path into absolute path
+    let basedir = path.parent().expect("invalid config file path");
+    config.git.ssh_key = basedir.join(config.git.ssh_key);
+    config.git.cache_directory = basedir.join(config.git.cache_directory);
+
+    Ok(config)
 }
 
 fn read_file<P>(path: P) -> Result<String>
@@ -107,12 +118,16 @@ impl Into<Gitlab> for RawGitlab {
 
 #[derive(Deserialize)]
 struct RawGit {
-    ssh_key: String,
+    ssh_key: PathBuf,
+    cache_directory: Option<PathBuf>,
 }
 
 impl Into<Git> for RawGit {
     fn into(self) -> Git {
-        Git { ssh_key: self.ssh_key }
+        Git {
+            ssh_key: self.ssh_key,
+            cache_directory: self.cache_directory.unwrap_or(DEFAULT_GIT_CACHE_DIRECTORY.into()),
+        }
     }
 }
 

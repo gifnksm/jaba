@@ -59,6 +59,7 @@ use slog::{DrainExt, Level, LevelFilter, Logger};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 use std::collections::hash_map::Entry;
+use std::path::PathBuf;
 
 mod build_state;
 mod config;
@@ -70,8 +71,11 @@ mod project;
 const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
 const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
+const DEFAULT_CONFIG_PATH: &'static str = "cfg.toml";
+
 #[derive(Debug)]
 struct Arg {
+    config_path: PathBuf,
     log_level: u64,
 }
 
@@ -80,10 +84,18 @@ fn parse_arg() -> Arg {
         .version(APP_VERSION)
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
+        .arg(clap::Arg::with_name("config")
+            .short("c")
+            .long("config")
+            .value_name("FILE")
+            .help("Sets a custom config file path"))
         .arg(clap::Arg::with_name("v").short("v").multiple(true).help("Sets a level of verbosity"))
         .get_matches();
 
-    Arg { log_level: matches.occurrences_of("v") }
+    Arg {
+        config_path: matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH).into(),
+        log_level: matches.occurrences_of("v"),
+    }
 }
 
 fn create_logger(log_level: u64) -> Logger {
@@ -288,11 +300,15 @@ fn run_repo(log: &Logger,
     Ok(())
 }
 
-fn run(log: Logger, _arg: Arg) -> Result<()> {
+fn run(log: Logger, arg: Arg) -> Result<()> {
     info!(log, "start"; "package" => APP_NAME, "version" => APP_VERSION);
 
-    let config = config::from_path("cfg.toml")?;
-    debug!(log, "configuration file loaded");
+    let config = config::from_path(arg.config_path)?;
+    debug!(log, "configuration file loaded";
+           "gitlab.host" => config.gitlab.host,
+           "gitlab.insecure" => config.gitlab.insecure,
+           "git.ssh_key" => config.git.ssh_key.to_string_lossy().to_string(),
+           "git.cache_directory" => config.git.cache_directory.to_string_lossy().to_string());
 
     let gitlab = GitlabExt::new(&log, &config.gitlab)?;
 
