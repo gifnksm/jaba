@@ -71,7 +71,7 @@ mod project;
 const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
 const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-const DEFAULT_CONFIG_PATH: &'static str = "cfg.toml";
+const DEFAULT_CONFIG_PATH: &'static str = "etc/cfg.toml";
 
 #[derive(Debug)]
 struct Arg {

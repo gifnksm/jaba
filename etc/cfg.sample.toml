@@ -1,0 +1,23 @@
+[gitlab]
+
+## GitLab hostname (and port).
+host = "localhost:10080"
+
+## Bot account's access token.
+access_token = "<secret_token>"
+
+## If your gitlab does not support https access, set insecure as true.
+# insecure = true
+
+[git]
+
+## SSH private key's path for git operations
+ssh_key = "./credentials/is_rsa"
+
+## Git cache directory path.
+# checkout_path = "./cache"
+
+[repo.test]
+
+# Project path (<namespace>/<project>)
+name = "foo/bar"
