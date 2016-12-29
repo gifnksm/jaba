@@ -25,7 +25,7 @@
 
 //! Jaba - Just Another Build Automation
 //!
-//! ![State transition diagram](../../../img/state_transition.png)
+//! ![State transition diagram](_img/state_transition.png)
 
 extern crate chrono;
 extern crate clap;
