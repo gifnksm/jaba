@@ -1,0 +1,30 @@
+digraph state_transition {
+    init [label="Init"];
+    approved [label="Approved"];
+    running [label="Running"];
+    success [label="Success"];
+    merged [label="Merged"];
+    failed [label="Failed"];
+
+    init -> approved [label="r+"];
+
+    approved -> init [label="r-/source_changed"];
+    approved -> running [label="start"];
+    approved -> failed [label="conflict"];
+
+    running -> success [label="success"];
+    running -> failed [label="fails"];
+    running -> init [label="r-/source_changed"];
+    running -> approved [label="target_changed"];
+
+    success -> merged [label="push"];
+    success -> approved [label="push_failed/target_changed"];
+    success -> init [label="r-/source_changed"];
+
+    failed -> init [label="r-/source_changed"];
+    failed -> running [label="rerun"];
+    failed -> approved [label="retry"];
+
+    {rank = min; init }
+    {rank = max; merged; failed }
+}
