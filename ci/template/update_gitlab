@@ -1,0 +1,18 @@
+#!/bin/bash
+CURDIR=$(dirname $0)
+cd $CURDIR
+
+OUTPUT=gitlab.yml
+
+curl -sSf https://raw.githubusercontent.com/sameersbn/docker-gitlab/master/docker-compose.yml | \
+    sed -e 's!- /srv/docker/gitlab/!- ${DOCKER_VOLUME_ROOT}/!' \
+        -e 's!- "10080:80"!- "${GITLAB_PORT}:80"!' \
+        -e 's!- "10022:22"!- "${GITLAB_SSH_PORT}:22"!' \
+        -e 's!\(- GITLAB_HOST=\).*$!\1${GITLAB_HOST}!' \
+        -e 's!\(- GITLAB_PORT=\).*$!\1${GITLAB_PORT}!' \
+        -e 's!\(- GITLAB_SSH_PORT=\).*$!\1${GITLAB_SSH_PORT}!' \
+        -e 's!\(- GITLAB_ROOT_PASSWORD=\).*$!\1${GITLAB_ROOT_PASSWORD}!' \
+        -e 's!\(- GITLAB_SECRETS_DB_KEY_BASE=\).*$!\1${GITLAB_SECRETS_DB_KEY_BASE}!' \
+        -e 's!\(- GITLAB_SECRETS_SECRET_KEY_BASE=\).*$!\1${GITLAB_SECRETS_SECRET_KEY_BASE}!' \
+        -e 's!\(- GITLAB_SECRETS_OTP_KEY_BASE=\).*$!\1${GITLAB_SECRETS_OTP_KEY_BASE}!' \
+        > "${OUTPUT}.in"

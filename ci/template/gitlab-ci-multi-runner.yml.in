@@ -1,0 +1,17 @@
+version: '2'
+
+services:
+  gitlab-ci-multi-runner:
+    image: sameersbn/gitlab-ci-multi-runner:1.1.4-6
+    volumes:
+      - ${DOCKER_VOLUME_ROOT}:/home/gitlab_ci_multi_runner/data
+    environment:
+      - CI_SERVER_URL=${CI_SERVER_URL}
+      - RUNNER_TOKEN=${RUNNER_TOKEN}
+      - RUNNER_DESCRIPTION=${RUNNER_DESCRIPTION}
+      - RUNNER_EXECUTOR=shell
+    restart: always
+networks:
+  default:
+    external:
+      name: ${GITLAB_NETWORK}

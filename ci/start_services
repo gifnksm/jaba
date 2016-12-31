@@ -1,0 +1,93 @@
+#!/bin/bash -eu
+
+cd $(dirname $0)
+
+. ./scripts/common.bash
+
+init_dir() {
+    rm -rf "${TARGET_DIR}"
+    mkdir -p "${TARGET_DIR}"
+}
+
+launch_compose() {
+    local PROJECT_NAME="${1}"
+
+    local ROOT_DIR="${TARGET_DIR}/${PROJECT_NAME}"
+    mkdir -p "${ROOT_DIR}"
+
+    local TEMPLATE="${TEMPLATE_DIR}/${PROJECT_NAME}.yml.in"
+    local COMPOSE="${ROOT_DIR}/docker-compose.yml"
+
+    template "${TEMPLATE}" > "${COMPOSE}"
+    docker-compose -p "${PROJECT_NAME}" -f "${COMPOSE}" up -d --force-recreate --remove-orphans
+}
+
+launch_gitlab() {
+    local GITLAB_ROOT_PASSWORD="${1}"
+
+    local DOCKER_VOLUME_ROOT="./"
+    local GITLAB_SECRETS_DB_KEY_BASE="$(pwgen -s1 64)"
+    local GITLAB_SECRETS_SECRET_KEY_BASE="$(pwgen -s1 64)"
+    local GITLAB_SECRETS_OTP_KEY_BASE="$(pwgen -s1 64)"
+
+    launch_compose "gitlab"
+}
+
+launch_runner() {
+    local PRIVATE_TOKEN="${1}"
+
+    local DOCKER_VOLUME_ROOT="./"
+    local CI_SERVER_URL="http://gitlab:80/ci"
+    local RUNNER_TOKEN=$(curl -sSf --header "PRIVATE-TOKEN: ${PRIVATE_TOKEN}" "${GITLAB_URL}/admin/runners" | \
+                             sed -n 's!<code id="runners-token">\(.*\)</code>!\1!p')
+    local RUNNER_DESCRIPTION="default"
+    local GITLAB_NETWORK="gitlab_default"
+
+    launch_compose "gitlab-ci-multi-runner"
+}
+
+wait_accessible() {
+    local TARGET_URL="${1}"
+    local INTERVAL=5
+    local COUNT=0
+
+    until curl -sSf "${TARGET_URL}" > /dev/null; do
+        echo "waiting for the website to be accessable: ${TARGET_URL} [${COUNT}]" >&2
+        COUNT=$((COUNT + INTERVAL))
+        sleep "${INTERVAL}"
+    done
+}
+
+wait_runner_active() {
+    local PRIVATE_TOKEN="${1}"
+    local INTERVAL=1
+    local COUNT=0
+
+    while true; do
+        local NUM_ACTIVE_RUNNERS=$(api_get "${PRIVATE_TOKEN}" "runners/all" | \
+                                       jq -r '[.[] | select(.active)] | length')
+        [ "${NUM_ACTIVE_RUNNERS}" -gt 0 ] && break
+        echo "waiting for the runner to be active [${COUNT}]" >&2
+        COUNT=$((COUNT + INTERVAL))
+        sleep "${INTERVAL}"
+    done
+}
+
+run() {
+    init_dir
+
+    local ROOT_PASSWORD="$(pwgen -s1 64)"
+    launch_gitlab "${ROOT_PASSWORD}"
+    wait_accessible "${GITLAB_URL}"
+
+    local GITLAB_USER_DIR="./target/user"
+    mkdir -p "${GITLAB_USER_DIR}"
+    local ROOT_SESSION="${GITLAB_USER_DIR}/root.json"
+    fetch_session "root" "${ROOT_PASSWORD}" > "${ROOT_SESSION}"
+
+    local ROOT_PRIVATE_TOKEN="$(jq -r '.private_token' "${ROOT_SESSION}")"
+    launch_runner "${ROOT_PRIVATE_TOKEN}"
+    wait_runner_active "${ROOT_PRIVATE_TOKEN}"
+}
+
+run

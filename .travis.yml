@@ -1,0 +1,19 @@
+sudo: required
+addons:
+  apt:
+    packages:
+      - pwgen
+
+language: rust
+rust:
+  - nightly
+
+services:
+  - docker
+
+before_script:
+  - ./ci/start_services
+
+script:
+  - cargo build --verbose
+  - cargo test --verbose

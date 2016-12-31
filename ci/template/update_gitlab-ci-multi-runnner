@@ -1,0 +1,27 @@
+#!/bin/bash
+CURDIR=$(dirname $0)
+cd $CURDIR
+
+OUTPUT=gitlab-ci-multi-runner.yml
+
+cat <<EOF > "${OUTPUT}.in"
+version: '2'
+
+services:
+EOF
+
+curl -sSf https://raw.githubusercontent.com/sameersbn/docker-gitlab-ci-multi-runner/master/docker-compose.yml | \
+    sed -e 's!^GitlabCIMultiRunner:$!gitlab-ci-multi-runner:!'\
+        -e 's!- /srv/docker/gitlab-runner:!- ${DOCKER_VOLUME_ROOT}:!' \
+        -e 's!- CI_SERVER_URL=!&${CI_SERVER_URL}!' \
+        -e 's!- RUNNER_TOKEN=!&${RUNNER_TOKEN}!' \
+        -e 's!- RUNNER_DESCRIPTION=!&${RUNNER_DESCRIPTION}!' \
+        -e 's!^!  !' \
+        >> "${OUTPUT}.in"
+
+cat <<EOF >> "${OUTPUT}.in"
+networks:
+  default:
+    external:
+      name: \${GITLAB_NETWORK}
+EOF
