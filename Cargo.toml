@@ -1,6 +1,9 @@
 [package]
 authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
 name = "jaba"
+description = "JABA; Just Another Build Automation"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/gifnksm/jaba"
 version = "0.1.0"
 
 [dependencies]
