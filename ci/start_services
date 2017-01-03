@@ -4,6 +4,14 @@ cd $(dirname $0)
 
 . ./scripts/common.bash
 
+shutdown_container() {
+    local DOCKER_COMPOSE="${TARGET_DIR}/gitlab/docker-compose.yml"
+    [ -f "${DOCKER_COMPOSE}" ] && docker-compose -f "${DOCKER_COMPOSE}" down || true
+
+    local RUNNER_COMPOSE="${TARGET_DIR}/gitlab-ci-multi-runner/docker-compose.yml"
+    [ -f "${RUNNER_COMPOSE}" ] && docker-compose -f "${RUNNER_COMPOSE}" down || true
+}
+
 init_dir() {
     rm -rf "${TARGET_DIR}"
     mkdir -p "${TARGET_DIR}"
@@ -74,6 +82,7 @@ wait_runner_active() {
 }
 
 run() {
+    shutdown_container
     init_dir
 
     local ROOT_PASSWORD="$(pwgen -s1 64)"
