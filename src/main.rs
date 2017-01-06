@@ -1,6 +1,5 @@
 #![feature(conservative_impl_trait)]
 #![feature(ordering_chaining)]
-#![feature(proc_macro)]
 
 #![warn(missing_copy_implementations)]
 #![warn(missing_debug_implementations)]
